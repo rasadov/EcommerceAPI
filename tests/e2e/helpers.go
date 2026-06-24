@@ -3,53 +3,106 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
 	"net/http"
+	"os"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/rasadov/EcommerceAPI/pkg/auth"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// GraphQLRequest is a helper struct for the request body
 type GraphQLRequest struct {
 	Query     string                 `json:"query"`
 	Variables map[string]interface{} `json:"variables,omitempty"`
 }
 
-// GraphQLResponse is a helper struct for the response body
 type GraphQLResponse struct {
 	Data   interface{}   `json:"data,omitempty"`
 	Errors []interface{} `json:"errors,omitempty"`
 }
 
-// Change this if needed:
 var (
-	serverURL = "http://localhost:8080/graphql"
-	Email     string
-	Password  string
-	AuthToken string
+	serverURL  = "http://localhost:8080/graphql"
+	playground = "http://localhost:8080/playground"
+	Email      string
+	Password   string
+	AuthToken  string
+	AccountID  int
 	ProductID  string
 	ProductID2 string
 	OrderID    int
 )
 
-// doRequest is a helper that executes a GraphQL mutation/query
-// against our server, attaching the JWT token as a *cookie*
-// if AuthToken is set.
-func doRequest(t *testing.T, serverURL, query string, variables map[string]interface{}) GraphQLResponse {
+func hasDodoAPIKey() bool {
+	return strings.TrimSpace(os.Getenv("DODO_API_KEY")) != ""
+}
+
+func setAccountIDFromToken(t *testing.T) {
+	t.Helper()
+	token, err := auth.ValidateToken(AuthToken)
+	require.NoError(t, err)
+
+	claims, ok := token.Claims.(*auth.JWTCustomClaims)
+	require.True(t, ok, "token claims should be JWTCustomClaims")
+	AccountID = int(claims.UserID)
+}
+
+func waitForStack(t *testing.T) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Minute)
+	probeQuery := `
+		query {
+			accounts(pagination: { skip: 0, take: 1 }) {
+				id
+			}
+		}
+	`
+
+	for attempt := 1; time.Now().Before(deadline); attempt++ {
+		resp, err := http.Get(playground)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			if resp != nil {
+				resp.Body.Close()
+			}
+			t.Logf("Waiting for GraphQL gateway... (%d)", attempt)
+			time.Sleep(10 * time.Second)
+			continue
+		}
+		resp.Body.Close()
+
+		gqlResp, err := postGraphQL(probeQuery, nil)
+		if err == nil && len(gqlResp.Errors) == 0 {
+			t.Log("Stack is ready")
+			return
+		}
+
+		t.Logf("Waiting for backend services... (%d)", attempt)
+		time.Sleep(10 * time.Second)
+	}
+
+	t.Fatal("stack did not become ready in time")
+}
+
+func postGraphQL(query string, variables map[string]interface{}) (GraphQLResponse, error) {
 	body := GraphQLRequest{
 		Query:     query,
 		Variables: variables,
 	}
 
-	// Encode request to JSON
 	b, err := json.Marshal(body)
-	assert.NoError(t, err)
+	if err != nil {
+		return GraphQLResponse{}, err
+	}
 
-	// Build the request
-	req, err := http.NewRequest("POST", serverURL, bytes.NewBuffer(b))
-	assert.NoError(t, err)
+	req, err := http.NewRequest(http.MethodPost, serverURL, bytes.NewBuffer(b))
+	if err != nil {
+		return GraphQLResponse{}, err
+	}
 	req.Header.Set("Content-Type", "application/json")
 
-	// If we have a token, set it as a cookie named "token"
 	if AuthToken != "" {
 		req.AddCookie(&http.Cookie{
 			Name:  "token",
@@ -58,15 +111,24 @@ func doRequest(t *testing.T, serverURL, query string, variables map[string]inter
 		})
 	}
 
-	// Execute request
 	resp, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err)
+	if err != nil {
+		return GraphQLResponse{}, err
+	}
 	defer resp.Body.Close()
 
-	// Decode response
 	var gqlResp GraphQLResponse
-	err = json.NewDecoder(resp.Body).Decode(&gqlResp)
-	assert.NoError(t, err)
+	if err := json.NewDecoder(resp.Body).Decode(&gqlResp); err != nil {
+		return GraphQLResponse{}, err
+	}
 
+	return gqlResp, nil
+}
+
+func doRequest(t *testing.T, query string, variables map[string]interface{}) GraphQLResponse {
+	t.Helper()
+
+	gqlResp, err := postGraphQL(query, variables)
+	assert.NoError(t, err)
 	return gqlResp
 }

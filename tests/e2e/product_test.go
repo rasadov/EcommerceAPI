@@ -1,13 +1,13 @@
 package main
 
 import (
-	"github.com/stretchr/testify/assert"
 	"log"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-// 3) Create a product
-func Test03CreateProduct(t *testing.T) {
+func stepCreateProduct(t *testing.T) {
 	query := `
         mutation CreateProduct($product: CreateProductInput!) {
           createProduct(product: $product) {
@@ -27,7 +27,7 @@ func Test03CreateProduct(t *testing.T) {
 		},
 	}
 
-	resp := doRequest(t, serverURL, query, variables)
+	resp := doRequest(t, query, variables)
 	assert.Nil(t, resp.Errors, "unexpected GraphQL errors during CreateProduct")
 
 	data, ok := resp.Data.(map[string]interface{})
@@ -45,13 +45,12 @@ func Test03CreateProduct(t *testing.T) {
 	assert.NotEmpty(t, ProductID)
 	log.Println("Created product:", p)
 
-	// Create a second product so order tests have enough items
 	secondProduct := map[string]interface{}{
 		"name":        "Second Product",
 		"description": "Another test product",
 		"price":       24.99,
 	}
-	resp2 := doRequest(t, serverURL, query, map[string]interface{}{"product": secondProduct})
+	resp2 := doRequest(t, query, map[string]interface{}{"product": secondProduct})
 	assert.Nil(t, resp2.Errors, "unexpected GraphQL errors during second CreateProduct")
 
 	data2, ok := resp2.Data.(map[string]interface{})
@@ -63,7 +62,7 @@ func Test03CreateProduct(t *testing.T) {
 	assert.NotEmpty(t, ProductID2)
 }
 
-func Test06QueryProducts(t *testing.T) {
+func stepQueryProducts(t *testing.T) {
 	query := `
         query GetProducts($pagination: PaginationInput, $query: String, $id: String) {
           product(pagination: $pagination, query: $query, id: $id) {
@@ -82,7 +81,7 @@ func Test06QueryProducts(t *testing.T) {
 		},
 	}
 
-	resp := doRequest(t, serverURL, query, variables)
+	resp := doRequest(t, query, variables)
 	assert.Nil(t, resp.Errors)
 
 	data, ok := resp.Data.(map[string]interface{})
@@ -90,11 +89,12 @@ func Test06QueryProducts(t *testing.T) {
 
 	products, ok := data["product"].([]interface{})
 	assert.True(t, ok)
+	assert.GreaterOrEqual(t, len(products), 2)
 
 	log.Println("Products:", products)
 }
 
-func Test07UpdateProduct(t *testing.T) {
+func stepUpdateProduct(t *testing.T) {
 	query := `
 		mutation UpdateProduct($product: UpdateProductInput!) {
 			updateProduct(product: $product) {
@@ -115,7 +115,7 @@ func Test07UpdateProduct(t *testing.T) {
 		},
 	}
 
-	resp := doRequest(t, serverURL, query, variables)
+	resp := doRequest(t, query, variables)
 	assert.Nil(t, resp.Errors)
 
 	data, ok := resp.Data.(map[string]interface{})
@@ -131,7 +131,7 @@ func Test07UpdateProduct(t *testing.T) {
 	log.Println("Updated product:", p)
 }
 
-func Test11DeleteProduct(t *testing.T) {
+func stepDeleteProduct(t *testing.T) {
 	query := `
 		mutation DeleteProduct($id: String!) {
 			deleteProduct(id: $id)
@@ -141,7 +141,7 @@ func Test11DeleteProduct(t *testing.T) {
 		"id": ProductID,
 	}
 
-	resp := doRequest(t, serverURL, query, variables)
+	resp := doRequest(t, query, variables)
 	assert.Nil(t, resp.Errors)
 
 	data, ok := resp.Data.(map[string]interface{})

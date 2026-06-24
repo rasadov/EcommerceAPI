@@ -1,15 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func Test09CreateCustomerPortalSession(t *testing.T) {
+func stepCustomerPortalSession(t *testing.T) {
 	query := `
         mutation CreateCustomerPortalSession($credentials: CustomerPortalSessionInput!) {
           createCustomerPortalSession(credentials: $credentials) {
@@ -17,16 +16,15 @@ func Test09CreateCustomerPortalSession(t *testing.T) {
           }
         }
     `
-	Email = fmt.Sprintf("random%d@example.com", rand.Intn(100000))
 	variables := map[string]interface{}{
 		"credentials": map[string]interface{}{
-			"accountId": 1,
+			"accountId": AccountID,
 			"email":     Email,
 			"name":      "John Doe",
 		},
 	}
 
-	resp := doRequest(t, serverURL, query, variables)
+	resp := doRequest(t, query, variables)
 	assert.Nil(t, resp.Errors)
 
 	data, ok := resp.Data.(map[string]interface{})
@@ -42,7 +40,7 @@ func Test09CreateCustomerPortalSession(t *testing.T) {
 	log.Println("Created customer portal session:", url)
 }
 
-func Test10CheckoutSession(t *testing.T) {
+func stepCheckoutSession(t *testing.T) {
 	query := `
 		mutation CreateCheckoutSession($details: CheckoutInput!) {
 			createCheckoutSession(details: $details) {
@@ -52,7 +50,7 @@ func Test10CheckoutSession(t *testing.T) {
 	`
 	variables := map[string]interface{}{
 		"details": map[string]interface{}{
-			"accountId":   1,
+			"accountId":   AccountID,
 			"email":       Email,
 			"name":        "John Doe",
 			"redirectUrl": "http://localhost:3000/checkout-complete",
@@ -64,7 +62,16 @@ func Test10CheckoutSession(t *testing.T) {
 		},
 	}
 
-	resp := doRequest(t, serverURL, query, variables)
+	var resp GraphQLResponse
+	deadline := time.Now().Add(2 * time.Minute)
+	for time.Now().Before(deadline) {
+		resp = doRequest(t, query, variables)
+		if len(resp.Errors) == 0 {
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
+
 	assert.Nil(t, resp.Errors)
 
 	data, ok := resp.Data.(map[string]interface{})

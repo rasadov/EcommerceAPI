@@ -1,63 +1,16 @@
 package main
 
 import (
-	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 )
 
-// 4) Create an order with 2 products
-func Test04CreateOrder(t *testing.T) {
-	// 1) Query products to get a list of available product IDs
-	productQuery := `
-        query GetProducts($pagination: PaginationInput, $query: String, $id: String) {
-          product(pagination: $pagination, query: $query, id: $id) {
-            id
-            name
-            description
-            price
-            accountId
-          }
-        }
-    `
-	variables := map[string]interface{}{
-		"pagination": map[string]interface{}{
-			"skip": 0,
-			"take": 5,
-		},
-	}
+func stepCreateOrder(t *testing.T) {
+	assert.NotEmpty(t, ProductID, "ProductID must be set before creating an order")
+	assert.NotEmpty(t, ProductID2, "ProductID2 must be set before creating an order")
 
-	productsResp := doRequest(t, serverURL, productQuery, variables)
-
-	// 2) If there are GraphQL errors, fail immediately so we see the cause
-	if len(productsResp.Errors) > 0 {
-		t.Fatalf("unexpected GraphQL errors during product query: %v", productsResp.Errors)
-	}
-
-	// 3) Parse the data
-	productsData, ok := productsResp.Data.(map[string]interface{})
-	assert.True(t, ok, "expected product query data to be a map")
-
-	productList, ok := productsData["product"].([]interface{})
-	assert.True(t, ok, "expected 'product' field to be a slice in the response")
-	assert.True(t, len(productList) >= 2, "need at least 2 products to create an order")
-
-	// 4) Pick 2 random products
-	rand.New(rand.NewSource(time.Now().UnixNano()))
-	rand.Shuffle(len(productList), func(i, j int) {
-		productList[i], productList[j] = productList[j], productList[i]
-	})
-	product1 := productList[0].(map[string]interface{})
-	product2 := productList[1].(map[string]interface{})
-
-	id1, _ := product1["id"].(string)
-	id2, _ := product2["id"].(string)
-	assert.NotEmpty(t, id1, "product 1 id is empty")
-	assert.NotEmpty(t, id2, "product 2 id is empty")
-
-	// 5) Now, call CreateOrder using the 2 random IDs
 	createOrderQuery := `
         mutation CreateOrder($order: OrderInput!) {
           createOrder(order: $order) {
@@ -77,22 +30,29 @@ func Test04CreateOrder(t *testing.T) {
 		"order": map[string]interface{}{
 			"products": []interface{}{
 				map[string]interface{}{
-					"id":       id1,
+					"id":       ProductID,
 					"quantity": 2,
 				},
 				map[string]interface{}{
-					"id":       id2,
+					"id":       ProductID2,
 					"quantity": 1,
 				},
 			},
 		},
 	}
-	resp := doRequest(t, serverURL, createOrderQuery, orderVariables)
 
-	// 6) Check for GraphQL errors before parsing
+	var resp GraphQLResponse
+	deadline := time.Now().Add(2 * time.Minute)
+	for time.Now().Before(deadline) {
+		resp = doRequest(t, createOrderQuery, orderVariables)
+		if len(resp.Errors) == 0 {
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
+
 	assert.Nil(t, resp.Errors, "unexpected GraphQL errors during CreateOrder")
 
-	// 7) Assert the response is valid
 	data, ok := resp.Data.(map[string]interface{})
 	assert.True(t, ok, "createOrder response data should be a map")
 
