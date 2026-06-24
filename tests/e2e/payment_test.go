@@ -9,19 +9,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateCustomerPortalSession(t *testing.T) {
+func Test09CreateCustomerPortalSession(t *testing.T) {
 	query := `
-        mutation CreateCustomerPortalSession($accountId: String!) {
-          createCustomerPortalSession(accountId: $accountId) {
+        mutation CreateCustomerPortalSession($credentials: CustomerPortalSessionInput!) {
+          createCustomerPortalSession(credentials: $credentials) {
             url
           }
         }
     `
 	Email = fmt.Sprintf("random%d@example.com", rand.Intn(100000))
 	variables := map[string]interface{}{
-		"accountId": "1",
-		"email":     Email,
-		"name":      "John Doe",
+		"credentials": map[string]interface{}{
+			"accountId": 1,
+			"email":     Email,
+			"name":      "John Doe",
+		},
 	}
 
 	resp := doRequest(t, serverURL, query, variables)
@@ -40,23 +42,25 @@ func TestCreateCustomerPortalSession(t *testing.T) {
 	log.Println("Created customer portal session:", url)
 }
 
-func TestCheckoutSession(t *testing.T) {
+func Test10CheckoutSession(t *testing.T) {
 	query := `
-		mutation CreateCheckoutSession($accountId: String!, $products: [CheckoutProductInput!]!) {
-			createCheckoutSession(accountId: $accountId, products: $products, email: $email, name: $name, redirectUrl: $redirectUrl, orderId: $orderId) {
+		mutation CreateCheckoutSession($details: CheckoutInput!) {
+			createCheckoutSession(details: $details) {
 				url
 			}
 		}
 	`
 	variables := map[string]interface{}{
-		"accountId":   "1",
-		"email":       Email,
-		"name":        "John Doe",
-		"redirectUrl": "http://localhost:3000/checkout-complete",
-		"orderId":     1,
-		"products": []map[string]interface{}{
-			{"id": "1", "quantity": 1},
-			{"id": "2", "quantity": 1},
+		"details": map[string]interface{}{
+			"accountId":   1,
+			"email":       Email,
+			"name":        "John Doe",
+			"redirectUrl": "http://localhost:3000/checkout-complete",
+			"orderId":     OrderID,
+			"products": []map[string]interface{}{
+				{"id": ProductID, "quantity": 1},
+				{"id": ProductID2, "quantity": 1},
+			},
 		},
 	}
 

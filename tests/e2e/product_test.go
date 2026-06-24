@@ -24,8 +24,6 @@ func Test03CreateProduct(t *testing.T) {
 			"name":        "Test Product",
 			"description": "A test description",
 			"price":       12.99,
-			"id":          "1",
-			"accountId":   "1",
 		},
 	}
 
@@ -42,14 +40,33 @@ func Test03CreateProduct(t *testing.T) {
 	assert.Equal(t, "Test Product", p["name"])
 	assert.Equal(t, "A test description", p["description"])
 	assert.EqualValues(t, 12.99, p["price"])
+	ProductID, ok = p["id"].(string)
+	assert.True(t, ok)
+	assert.NotEmpty(t, ProductID)
 	log.Println("Created product:", p)
+
+	// Create a second product so order tests have enough items
+	secondProduct := map[string]interface{}{
+		"name":        "Second Product",
+		"description": "Another test product",
+		"price":       24.99,
+	}
+	resp2 := doRequest(t, serverURL, query, map[string]interface{}{"product": secondProduct})
+	assert.Nil(t, resp2.Errors, "unexpected GraphQL errors during second CreateProduct")
+
+	data2, ok := resp2.Data.(map[string]interface{})
+	assert.True(t, ok)
+	p2, ok := data2["createProduct"].(map[string]interface{})
+	assert.True(t, ok)
+	ProductID2, ok = p2["id"].(string)
+	assert.True(t, ok)
+	assert.NotEmpty(t, ProductID2)
 }
 
-// 4) Create an order with 2 products
 func Test06QueryProducts(t *testing.T) {
 	query := `
-        query GetProducts($pagination: PaginationInput, $query: String, $id: String, $recommended: Boolean) {
-          product(pagination: $pagination, query: $query, id: $id, recommended: $recommended) {
+        query GetProducts($pagination: PaginationInput, $query: String, $id: String) {
+          product(pagination: $pagination, query: $query, id: $id) {
             id
             name
             description
@@ -63,9 +80,6 @@ func Test06QueryProducts(t *testing.T) {
 			"skip": 0,
 			"take": 5,
 		},
-		// "query":       "",
-		 "id":         "1",
-		"recommended": false,
 	}
 
 	resp := doRequest(t, serverURL, query, variables)
@@ -94,11 +108,10 @@ func Test07UpdateProduct(t *testing.T) {
 	`
 	variables := map[string]interface{}{
 		"product": map[string]interface{}{
-			"id":          "1",
+			"id":          ProductID,
 			"name":        "Updated Product",
 			"description": "An updated description",
 			"price":       15.99,
-			"accountId":   "1",
 		},
 	}
 
@@ -111,23 +124,21 @@ func Test07UpdateProduct(t *testing.T) {
 	p, ok := data["updateProduct"].(map[string]interface{})
 	assert.True(t, ok)
 
-	assert.Equal(t, "1", p["id"])
+	assert.NotEmpty(t, p["id"])
 	assert.Equal(t, "Updated Product", p["name"])
 	assert.Equal(t, "An updated description", p["description"])
 	assert.EqualValues(t, 15.99, p["price"])
 	log.Println("Updated product:", p)
 }
 
-func Test08DeleteProduct(t *testing.T) {
+func Test11DeleteProduct(t *testing.T) {
 	query := `
 		mutation DeleteProduct($id: String!) {
-			deleteProduct(id: $id) {
-				id
-			}
+			deleteProduct(id: $id)
 		}
 	`
 	variables := map[string]interface{}{
-		"id": "1",
+		"id": ProductID,
 	}
 
 	resp := doRequest(t, serverURL, query, variables)
@@ -136,10 +147,8 @@ func Test08DeleteProduct(t *testing.T) {
 	data, ok := resp.Data.(map[string]interface{})
 	assert.True(t, ok)
 
-	p, ok := data["deleteProduct"].(map[string]interface{})
+	deleted, ok := data["deleteProduct"].(bool)
 	assert.True(t, ok)
-
-	assert.Equal(t, "1", p["id"])
-	log.Println("Deleted product:", p)
+	assert.True(t, deleted)
+	log.Println("Deleted product:", deleted)
 }
-

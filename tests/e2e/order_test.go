@@ -12,8 +12,8 @@ import (
 func Test04CreateOrder(t *testing.T) {
 	// 1) Query products to get a list of available product IDs
 	productQuery := `
-        query GetProducts($pagination: PaginationInput, $query: String, $id: String, $recommended: Boolean) {
-          product(pagination: $pagination, query: $query, id: $id, recommended: $recommended) {
+        query GetProducts($pagination: PaginationInput, $query: String, $id: String) {
+          product(pagination: $pagination, query: $query, id: $id) {
             id
             name
             description
@@ -27,10 +27,6 @@ func Test04CreateOrder(t *testing.T) {
 			"skip": 0,
 			"take": 5,
 		},
-		// Use "query" if you want to filter products by name or something, or just leave it blank
-		"query":       nil,
-		"id":          nil,
-		"recommended": false,
 	}
 
 	productsResp := doRequest(t, serverURL, productQuery, variables)
@@ -106,6 +102,10 @@ func Test04CreateOrder(t *testing.T) {
 	assert.NotEmpty(t, createdOrder["id"], "expected an order ID")
 	assert.NotEmpty(t, createdOrder["createdAt"], "expected a createdAt timestamp")
 	assert.NotEmpty(t, createdOrder["totalPrice"], "expected a totalPrice")
+
+	orderID, ok := createdOrder["id"].(float64)
+	assert.True(t, ok)
+	OrderID = int(orderID)
 
 	products, ok := createdOrder["products"].([]interface{})
 	assert.True(t, ok, "expected products to be a list")

@@ -26,6 +26,9 @@ var (
 	Email     string
 	Password  string
 	AuthToken string
+	ProductID  string
+	ProductID2 string
+	OrderID    int
 )
 
 // doRequest is a helper that executes a GraphQL mutation/query
