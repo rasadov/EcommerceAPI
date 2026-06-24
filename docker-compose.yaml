@@ -153,7 +153,8 @@ services:
       ORDER_SERVICE_URL: order:8080
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       PRODUCT_EVENTS_TOPIC: product_events
-      # Add Payment Provider Credentials
+      DODO_API_KEY: ${DODO_API_KEY:-}
+      DODO_TEST_MODE: ${DODO_TEST_MODE:-false}
     restart: on-failure
 
   recommender-server:
