@@ -1,43 +1,11 @@
 from surprise import SVD, Dataset, Reader
-import pandas as pd
 from app.db.session import ReplicaSession
-from app.db.models import Interaction, Product
-
-def fetch_interactions() -> pd.DataFrame:
-    with ReplicaSession() as session:
-        interactions = session.query(Interaction).all()
-        data = [
-            {
-                "user_id": i.user_id,
-                "product_id": i.product_id,
-                "rating": 3.0 if i.interaction_type == "purchase" else 1.0
-            }
-            for i in interactions
-        ]
-        return pd.DataFrame(data)
-
-def _get_all_product_ids(session):
-    """Fetch all product IDs from the database."""
-    return {p.id for p in session.query(Product.id).all()}
-
-def _get_interacted_ids_for_user(session, user_id: str):
-    """Get set of product IDs that the user has interacted with."""
-    return {
-        i.product_id
-        for i in session.query(Interaction.product_id)
-                      .filter(Interaction.user_id == user_id)
-                      .all()
-    }
-
-def _get_interacted_ids_for_viewed(session, viewed_ids: list[str]):
-    """Get set of product IDs among 'viewed_ids' that have existing interactions."""
-    return {
-        i.product_id
-        for i in session.query(Interaction.product_id)
-                      .filter(Interaction.product_id.in_(viewed_ids))
-                      .all()
-    }
-
+from shared.repo import (
+    fetch_interactions,
+    get_all_product_ids,
+    get_interacted_ids_for_user,
+    get_interacted_ids_for_viewed
+)
 
 class Recommender:
     def __init__(self):
@@ -65,8 +33,8 @@ class Recommender:
     def recommend_on_user_id(self, user_id: str, skip: int = 0, take: int = 5) -> list[str]:
         """Recommend based on user interactions."""
         with ReplicaSession() as session:
-            all_product_ids = _get_all_product_ids(session)
-            interacted_ids = _get_interacted_ids_for_user(session, user_id)
+            all_product_ids = get_all_product_ids(session)
+            interacted_ids = get_interacted_ids_for_user(session, user_id)
 
         candidates = [pid for pid in all_product_ids if pid not in interacted_ids]
 
@@ -79,8 +47,8 @@ class Recommender:
     def recommend_on_viewed_ids(self, viewed_ids: list[str], skip: int = 0, take: int = 5) -> list[str]:
         """Recommend based on a set of viewed product IDs."""
         with ReplicaSession() as session:
-            all_product_ids = _get_all_product_ids(session)
-            interacted_ids = _get_interacted_ids_for_viewed(session, viewed_ids)
+            all_product_ids = get_all_product_ids(session)
+            interacted_ids = get_interacted_ids_for_viewed(session, viewed_ids)
 
         candidates = [pid for pid in all_product_ids if pid not in interacted_ids]
 

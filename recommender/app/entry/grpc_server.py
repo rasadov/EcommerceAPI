@@ -3,28 +3,9 @@ from concurrent import futures
 
 from generated.pb import recommender_pb2, recommender_pb2_grpc
 from app.services.recommender import recommender
-from app.db.models import Product
-from app.db.session import ReplicaSession
-
-def _fetch_grpc_products(product_ids):
-    """Helper method to fetch products from the DB and return gRPC ProductReplica objects."""
-    with ReplicaSession() as session:
-        products = (
-            session.query(Product)
-            .filter(Product.id.in_(product_ids))
-            .all()
-        )
-
-    grpc_products = [
-        recommender_pb2.ProductReplica(
-            id=product.id,
-            name=product.name,
-            description=product.description,
-            price=product.price,
-        )
-        for product in products
-    ]
-    return grpc_products
+from recommender.app.shared.db.repo import get_products_by_ids
+from recommender.app.shared.db.session import get_session
+from recommender.app.shared.product.utils import fetch_product_by_id
 
 
 def _handle_exception(context, error_message):
@@ -49,9 +30,13 @@ class RecommenderServiceServicer(recommender_pb2_grpc.RecommenderServiceServicer
             )
 
             # Fetch product details as gRPC objects
-            grpc_products = _fetch_grpc_products(recommended_product_ids)
+            recommended_products = []
+            with get_session() as session:
+                products = get_products_by_ids(session, recommended_product_ids)
+                recommended_products = [product.to_grpc_model() for product in products]
+
             return recommender_pb2.RecommendationResponse(
-                recommended_products=grpc_products
+                recommended_products=recommended_products
             )
 
         except Exception as e:
@@ -71,9 +56,12 @@ class RecommenderServiceServicer(recommender_pb2_grpc.RecommenderServiceServicer
             )
 
             # Fetch product details as gRPC objects
-            grpc_products = _fetch_grpc_products(recommended_product_ids)
+            recommended_products = []
+            with get_session() as session:
+                products = get_products_by_ids(session, recommended_product_ids)
+                recommended_products = [product.to_grpc_model() for product in products]
             return recommender_pb2.RecommendationResponse(
-                recommended_products=grpc_products
+                recommended_products=recommended_products
             )
 
         except Exception as e:

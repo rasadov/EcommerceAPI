@@ -1,6 +1,7 @@
 from sqlalchemy import String, Float, Integer, DateTime, func, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from generated.pb import recommender_pb2
 
 Base = declarative_base()
 
@@ -15,6 +16,14 @@ class Product(Base):
     interactions: Mapped[list["Interaction"]] = relationship(
         "Interaction", back_populates="product", cascade="all, delete-orphan")
 
+    def to_grpc_model(self) -> recommender_pb2.ProductReplica:
+        return recommender_pb2.ProductReplica(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            price=self.price
+        )
+
 class Interaction(Base):
     __tablename__ = "interactions"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -25,3 +34,10 @@ class Interaction(Base):
 
     product: Mapped["Product"] = relationship(
         "Product", back_populates="interactions")
+
+    def to_grpc_model(self) -> recommender_pb2.Interaction:
+        return recommender_pb2.Interaction(
+            user_id=self.user_id,
+            product_id=self.product_id,
+            interaction_type=self.interaction_type
+        )
