@@ -6,12 +6,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/rasadov/EcommerceAPI/graphql/generated"
 	"github.com/rasadov/EcommerceAPI/order/models"
 	payment "github.com/rasadov/EcommerceAPI/payment/proto/pb"
 	"github.com/rasadov/EcommerceAPI/pkg/auth"
+	"github.com/rasadov/EcommerceAPI/pkg/middleware"
 )
 
 var (
@@ -32,7 +31,7 @@ func (resolver *mutationResolver) Register(ctx context.Context, in generated.Reg
 		return nil, err
 	}
 
-	ginContext, ok := ctx.Value("GinContextKey").(*gin.Context)
+	ginContext, ok := middleware.GinContextFromContext(ctx)
 	if !ok {
 		return nil, errors.New("could not retrieve gin context")
 	}
@@ -51,7 +50,7 @@ func (resolver *mutationResolver) Login(ctx context.Context, in generated.LoginI
 		return nil, err
 	}
 
-	ginContext, ok := ctx.Value("GinContextKey").(*gin.Context)
+	ginContext, ok := middleware.GinContextFromContext(ctx)
 	if !ok {
 		return nil, errors.New("could not retrieve gin context")
 	}
