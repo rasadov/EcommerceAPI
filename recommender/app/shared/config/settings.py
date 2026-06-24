@@ -4,7 +4,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 PRODUCT_API = os.getenv("PRODUCT_API")
-KAFKA_SERVER = os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka:9092')
+KAFKA_SERVER = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+
+PRODUCT_EVENTS_TOPIC = os.getenv("PRODUCT_EVENTS_TOPIC", "product_events")
+INTERACTION_EVENTS_TOPIC = os.getenv("INTERACTION_EVENTS_TOPIC", "interaction_events")
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 

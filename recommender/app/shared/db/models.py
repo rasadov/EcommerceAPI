@@ -34,10 +34,3 @@ class Interaction(Base):
 
     product: Mapped["Product"] = relationship(
         "Product", back_populates="interactions")
-
-    def to_grpc_model(self) -> recommender_pb2.Interaction:
-        return recommender_pb2.Interaction(
-            user_id=self.user_id,
-            product_id=self.product_id,
-            interaction_type=self.interaction_type
-        )
