@@ -94,7 +94,7 @@ func (repository *postgresRepository) GetOrdersForAccount(ctx context.Context, a
 }
 
 func (repository *postgresRepository) UpdateOrderPaymentStatus(ctx context.Context, orderId uint64, status string) error {
-	return repository.db.WithContext(ctx).Table("orders o").
+	return repository.db.WithContext(ctx).Model(&models.Order{}).
 		Where("id = ?", orderId).
 		Update("payment_status", status).Error
 }
