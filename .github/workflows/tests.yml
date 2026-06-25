@@ -1,106 +1,106 @@
-name: CI/CD Test Pipeline
-
-on:
-  push:
-  pull_request:
-  workflow_dispatch:
-
-concurrency:
-  group: test-pipeline-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  unit-tests:
-    name: Unit tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.23.4"
-          cache: true
-
-      - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y gcc
-
-      - name: Run unit tests
-        env:
-          CGO_ENABLED: "1"
-        run: |
-          packages=$(go list ./... | grep -v '/tests/e2e$')
-          go test -race -count=1 $packages
-
-  e2e-tests:
-    name: E2E tests
-    needs: unit-tests
-    if: |
-      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) ||
-      (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'master'))
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.23.4"
-          cache: true
-
-      - name: Configure Elasticsearch
-        run: sudo sysctl -w vm.max_map_count=262144
-
-      - name: Build base image
-        run: docker compose build base
-
-      - name: Start services
-        env:
-          DODO_API_KEY: ${{ secrets.DODO_API_KEY }}
-          DODO_TEST_MODE: "true"
-        run: docker compose up -d --build
-
-      - name: Wait for stack
-        run: |
-          services="account product order payment graphql"
-          for i in $(seq 1 60); do
-            if ! curl -sf http://localhost:8080/playground > /dev/null; then
-              echo "Waiting for GraphQL gateway... ($i/60)"
-              sleep 10
-              continue
-            fi
-
-            ready=true
-            for svc in $services; do
-              if ! docker compose ps --status running "$svc" | grep -q "running"; then
-                echo "Service $svc is not running yet"
-                ready=false
-                break
-              fi
-            done
-
-            if [ "$ready" = true ]; then
-              echo "All services are running, allowing gRPC listeners to bind..."
-              sleep 15
-              exit 0
-            fi
-
-            echo "Waiting for backend services... ($i/60)"
-            sleep 10
-          done
-
-          echo "Stack did not become ready in time"
-          docker compose ps
-          docker compose logs --tail=100 account product order payment graphql
-          exit 1
-
-      - name: Run E2E tests
-        env:
-          DODO_API_KEY: ${{ secrets.DODO_API_KEY }}
-        run: go test -v -count=1 -run TestE2E ./tests/e2e/...
-
-      - name: Stop services
-        if: always()
-        run: docker compose down -v
+name: CI/CD Test Pipeline
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: test-pipeline-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.4"
+          cache: true
+
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y gcc
+
+      - name: Run unit tests
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          packages=$(go list ./... | grep -v '/tests/e2e$')
+          go test -race -count=1 $packages
+
+  e2e-tests:
+    name: E2E tests
+    needs: unit-tests
+    if: |
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) ||
+      (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'master'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.4"
+          cache: true
+
+      - name: Configure Elasticsearch
+        run: sudo sysctl -w vm.max_map_count=262144
+
+      - name: Build base image
+        run: docker compose build base
+
+      - name: Start services
+        env:
+          DODO_API_KEY: ${{ secrets.DODO_API_KEY }}
+          DODO_TEST_MODE: "true"
+        run: docker compose up -d --build
+
+      - name: Wait for stack
+        run: |
+          services="kafka account product order payment graphql"
+          for i in $(seq 1 60); do
+            if ! curl -sf http://localhost:8080/playground > /dev/null; then
+              echo "Waiting for GraphQL gateway... ($i/60)"
+              sleep 10
+              continue
+            fi
+
+            ready=true
+            for svc in $services; do
+              if [ -z "$(docker compose ps --status running -q "$svc")" ]; then
+                echo "Service $svc is not running yet"
+                ready=false
+                break
+              fi
+            done
+
+            if [ "$ready" = true ]; then
+              echo "All services are running, allowing gRPC listeners to bind..."
+              sleep 15
+              exit 0
+            fi
+
+            echo "Waiting for backend services... ($i/60)"
+            sleep 10
+          done
+
+          echo "Stack did not become ready in time"
+          docker compose ps
+          docker compose logs --tail=100 kafka account product order payment graphql
+          exit 1
+
+      - name: Run E2E tests
+        env:
+          DODO_API_KEY: ${{ secrets.DODO_API_KEY }}
+        run: go test -v -count=1 -run TestE2E ./tests/e2e/...
+
+      - name: Stop services
+        if: always()
+        run: docker compose down -v
