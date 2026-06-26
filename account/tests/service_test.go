@@ -3,7 +3,6 @@ package tests
 import (
 	"context"
 	"errors"
-	"log"
 	"testing"
 
 	"github.com/rasadov/EcommerceAPI/account/internal"
@@ -58,17 +57,19 @@ func TestAccountService_Register(t *testing.T) {
 
 		mockRepo.On("GetAccountByEmail", ctx, email).Return((*models.Account)(nil), errors.New("not found")).Once()
 		mockRepo.On("PutAccount", ctx, mock.AnythingOfType("models.Account")).Return(account, nil).Once()
-		token, err := auth.GenerateToken(account.ID)
-		if err != nil {
-			log.Fatal(err)
-		}
 
 		// Execute
 		result, err := service.Register(ctx, name, email, password)
 
 		// Assert
 		assert.NoError(t, err)
-		assert.Equal(t, token, result)
+		assert.NotEmpty(t, result)
+
+		parsed, err := auth.ValidateToken(result)
+		assert.NoError(t, err)
+		claims, ok := parsed.Claims.(*auth.JWTCustomClaims)
+		assert.True(t, ok)
+		assert.Equal(t, account.ID, claims.UserID)
 		mockRepo.AssertExpectations(t)
 	})
 
@@ -100,10 +101,6 @@ func TestAccountService_Login(t *testing.T) {
 		password := "password123"
 		hashedPassword, _ := crypt.HashPassword(password)
 		account := &models.Account{ID: 1, Email: email, Password: hashedPassword}
-		token, err := auth.GenerateToken(account.ID)
-		if err != nil {
-			log.Fatal(err)
-		}
 
 		mockRepo.On("GetAccountByEmail", ctx, email).Return(account, nil).Once()
 
@@ -112,7 +109,13 @@ func TestAccountService_Login(t *testing.T) {
 
 		// Assert
 		assert.NoError(t, err)
-		assert.Equal(t, token, result)
+		assert.NotEmpty(t, result)
+
+		parsed, err := auth.ValidateToken(result)
+		assert.NoError(t, err)
+		claims, ok := parsed.Claims.(*auth.JWTCustomClaims)
+		assert.True(t, ok)
+		assert.Equal(t, account.ID, claims.UserID)
 		mockRepo.AssertExpectations(t)
 	})
 

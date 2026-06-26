@@ -7,38 +7,28 @@ services:
     profiles:
       - build-only
 
-  zookeeper:
-    restart: always
-    container_name: kafka-like-zookeeper
-    image: zookeeper:3.8
-    ports:
-      - "21850:2181"
-    volumes:
-      - "zookeeper-volume:/data"
-      - "zookeeper-volume:/datalog"
-    environment:
-      - ZOO_MY_ID=1
-      - ZOO_SERVERS=server.1=zookeeper:2888:3888;2181
-
   kafka:
     container_name: kafka
     hostname: kafka
     image: docker.io/apache/kafka:4.1.1
-    depends_on:
-      - zookeeper
     volumes:
       - "kafka-volume:/var/lib/kafka/data"
     ports:
       - "9092:9092"
       - "9093:9093"
     environment:
-      - KAFKA_BROKER_ID=1
-      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
-      - KAFKA_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
-      - KAFKA_ADVERTISED_LISTENERS=CLIENT://kafka:9092,EXTERNAL://localhost:9093
-      - KAFKA_INTER_BROKER_LISTENER_NAME=CLIENT
-      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      CLUSTER_ID: 5L6g3nShT-eMCtK--X86sw
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     restart: unless-stopped
 
   account_db:
@@ -153,7 +143,8 @@ services:
       ORDER_SERVICE_URL: order:8080
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       PRODUCT_EVENTS_TOPIC: product_events
-      # Add Payment Provider Credentials
+      DODO_API_KEY: ${DODO_API_KEY:-}
+      DODO_TEST_MODE: ${DODO_TEST_MODE:-false}
     restart: on-failure
 
   recommender-server:
@@ -216,4 +207,3 @@ volumes:
   payment_db_data:
   recommender_db_data:
   kafka-volume:
-  zookeeper-volume:

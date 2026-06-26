@@ -53,6 +53,7 @@ func (r *elasticRepository) PutProduct(ctx context.Context, p *models.Product) e
 			Name:        p.Name,
 			Description: p.Description,
 			Price:       p.Price,
+			AccountID:   p.AccountID,
 		}).
 		Do(ctx)
 	if err != nil {
@@ -81,6 +82,7 @@ func (r *elasticRepository) GetProductById(ctx context.Context, id string) (*mod
 		Name:        product.Name,
 		Description: product.Description,
 		Price:       product.Price,
+		AccountID:   product.AccountID,
 	}, nil
 }
 
@@ -105,6 +107,7 @@ func (r *elasticRepository) ListProducts(ctx context.Context, skip, take uint64)
 				Name:        product.Name,
 				Description: product.Description,
 				Price:       product.Price,
+				AccountID:   product.AccountID,
 			})
 		}
 	}
@@ -136,6 +139,7 @@ func (r *elasticRepository) ListProductsWithIDs(ctx context.Context, ids []strin
 				Name:        product.Name,
 				Description: product.Description,
 				Price:       product.Price,
+				AccountID:   product.AccountID,
 			})
 		}
 	}
@@ -163,6 +167,7 @@ func (r *elasticRepository) SearchProducts(ctx context.Context, query string, sk
 				Name:        product.Name,
 				Description: product.Description,
 				Price:       product.Price,
+				AccountID:   product.AccountID,
 			})
 		}
 	}
@@ -178,6 +183,7 @@ func (r *elasticRepository) UpdateProduct(ctx context.Context, updatedProduct *m
 			Name:        updatedProduct.Name,
 			Description: updatedProduct.Description,
 			Price:       updatedProduct.Price,
+			AccountID:   updatedProduct.AccountID,
 		}).
 		Do(ctx)
 	return err
