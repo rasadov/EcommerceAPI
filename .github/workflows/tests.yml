@@ -53,6 +53,18 @@ jobs:
       - name: Configure Elasticsearch
         run: sudo sysctl -w vm.max_map_count=262144
 
+      - name: Pre-pull images with retry
+        run: |
+          for image in postgres:14.0 postgres:15 docker.io/apache/kafka:4.1.1; do
+            for attempt in 1 2 3 4 5; do
+              if docker pull "$image"; then
+                break
+              fi
+              echo "Retry $attempt for $image..."
+              sleep 15
+            done
+          done
+
       - name: Build base image
         run: docker compose build base
 
@@ -65,6 +77,7 @@ jobs:
       - name: Wait for stack
         run: |
           services="kafka account product order payment graphql"
+
           for i in $(seq 1 60); do
             if ! curl -sf http://localhost:8080/playground > /dev/null; then
               echo "Waiting for GraphQL gateway... ($i/60)"
@@ -82,19 +95,69 @@ jobs:
             done
 
             if [ "$ready" = true ]; then
-              echo "All services are running, allowing gRPC listeners to bind..."
-              sleep 15
-              exit 0
+              break
             fi
 
             echo "Waiting for backend services... ($i/60)"
             sleep 10
           done
 
-          echo "Stack did not become ready in time"
-          docker compose ps
-          docker compose logs --tail=100 kafka account product order payment graphql
-          exit 1
+          if ! curl -sf http://localhost:8080/playground > /dev/null; then
+            echo "Stack did not become ready in time"
+            docker compose ps
+            docker compose logs --tail=100 kafka account product order payment graphql
+            exit 1
+          fi
+
+          echo "Waiting for Elasticsearch..."
+          network=$(docker inspect "$(docker compose ps -q graphql)" -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}}{{end}}')
+          for i in $(seq 1 30); do
+            if docker run --rm --network "$network" curlimages/curl:8.5.0 -sf http://product_db:9200/_cluster/health | grep -qE '"status":"(green|yellow)"'; then
+              echo "Elasticsearch is ready"
+              break
+            fi
+            echo "Elasticsearch not ready yet ($i/30)"
+            sleep 5
+          done
+
+          echo "Waiting for Kafka broker..."
+          for i in $(seq 1 30); do
+            if docker compose logs kafka 2>&1 | grep -q "Kafka Server started"; then
+              echo "Kafka is ready"
+              break
+            fi
+            echo "Kafka not ready yet ($i/30)"
+            sleep 5
+          done
+
+          echo "Creating Kafka topics before consumers attach..."
+          for topic in product_events interaction_events; do
+            docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh \
+              --bootstrap-server localhost:9092 \
+              --create \
+              --if-not-exists \
+              --topic "$topic" \
+              --partitions 1 \
+              --replication-factor 1
+          done
+
+          echo "Restarting Kafka-dependent services so consumers attach to existing topics..."
+          docker compose restart payment recommender-sync order product
+          sleep 20
+
+          for svc in payment order product; do
+            for i in $(seq 1 30); do
+              if [ -n "$(docker compose ps --status running -q "$svc")" ]; then
+                echo "$svc is running"
+                break
+              fi
+              echo "Waiting for $svc after restart ($i/30)..."
+              sleep 5
+            done
+          done
+
+          echo "Final warmup for gRPC and async pipelines..."
+          sleep 30
 
       - name: Run E2E tests
         env:
