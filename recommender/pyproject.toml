@@ -1,0 +1,33 @@
+[project]
+name = "recommender"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "boto3>=1.35.0",
+    "certifi==2025.1.31",
+    "charset-normalizer==3.4.1",
+    "greenlet==3.1.1",
+    "grpcio==1.71.0",
+    "grpcio-tools==1.71.0",
+    "idna==3.10",
+    "implicit>=0.7.2",
+    "joblib==1.4.2",
+    "kafka-python==2.1.4",
+    "loguru>=0.7.3",
+    "numpy==1.26.4",
+    "pandas==2.2.3",
+    "protobuf==5.29.4",
+    "psycopg2-binary==2.9.10",
+    "python-dateutil==2.9.0.post0",
+    "python-dotenv==1.1.0",
+    "pytz==2025.2",
+    "requests==2.32.3",
+    "scipy==1.15.2",
+    "six==1.17.0",
+    "sqlalchemy==2.0.40",
+    "typing-extensions==4.13.0",
+    "tzdata==2025.2",
+    "urllib3==2.3.0",
+]
