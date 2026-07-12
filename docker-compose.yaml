@@ -162,13 +162,17 @@ services:
     build:
       context: .
       dockerfile: docker/services/recommender.dockerfile
-    command: python app/entry/main.py
+    command: python main.py server
     depends_on:
       - recommender_db
       - kafka
     environment:
       DATABASE_URL: postgresql://rasadov:123456@recommender_db/rasadov?sslmode=disable
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ARTIFACTS_LOCAL_PATH: /app/artifacts
+      GRPC_PORT: 8080
+    volumes:
+      - recommender_artifacts:/app/artifacts
     restart: on-failure
 
   recommender-sync:
@@ -177,13 +181,32 @@ services:
     build:
       context: .
       dockerfile: docker/services/recommender.dockerfile
-    command: python app/entry/sync.py
+    command: python main.py consumer
     depends_on:
       - recommender_db
       - kafka
     environment:
       DATABASE_URL: postgresql://rasadov:123456@recommender_db/rasadov?sslmode=disable
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      PRODUCT_API: http://product:8080/products
+      PRODUCT_EVENTS_TOPIC: product_events
+      INTERACTION_EVENTS_TOPIC: interaction_events
+    restart: on-failure
+
+  recommender-train:
+    container_name: "recommender-train"
+    image: "rasadov/recommender-train:latest"
+    build:
+      context: .
+      dockerfile: docker/services/recommender.dockerfile
+    command: sh -c "while true; do python main.py train; sleep 43200; done"
+    depends_on:
+      - recommender_db
+    environment:
+      DATABASE_URL: postgresql://rasadov:123456@recommender_db/rasadov?sslmode=disable
+      ARTIFACTS_LOCAL_PATH: /app/artifacts
+    volumes:
+      - recommender_artifacts:/app/artifacts
     restart: on-failure
 
   graphql:
@@ -215,5 +238,6 @@ volumes:
   order_db_data:
   payment_db_data:
   recommender_db_data:
+  recommender_artifacts:
   kafka-volume:
   zookeeper-volume:
