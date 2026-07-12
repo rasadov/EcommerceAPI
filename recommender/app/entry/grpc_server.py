@@ -4,6 +4,7 @@ from loguru import logger
 
 from generated.pb import recommender_pb2, recommender_pb2_grpc
 from recommendations.load import load_service
+from shared.config.settings import GRPC_PORT
 from shared.db.repo import get_products_by_ids
 from shared.db.session import get_session
 
@@ -56,7 +57,7 @@ def serve() -> None:
         RecommenderServiceServicer(service),
         server,
     )
-    server.add_insecure_port("[::]:50051")
-    logger.info("gRPC server started on port 50051")
+    server.add_insecure_port(f"[::]:{GRPC_PORT}")
+    logger.info("gRPC server started on port {}", GRPC_PORT)
     server.start()
     server.wait_for_termination()
