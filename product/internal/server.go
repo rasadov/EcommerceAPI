@@ -44,6 +44,7 @@ func (s *grpcServer) GetProduct(ctx context.Context, r *wrapperspb.StringValue) 
 		Name:        p.Name,
 		Description: p.Description,
 		Price:       p.Price,
+		AccountId:   int64(p.AccountID),
 	}}, nil
 }
 
@@ -67,6 +68,7 @@ func (s *grpcServer) GetProducts(ctx context.Context, r *pb.GetProductsRequest) 
 			Name:        p.Name,
 			Description: p.Description,
 			Price:       p.Price,
+			AccountId:   int64(p.AccountID),
 		})
 
 	}
@@ -84,6 +86,7 @@ func (s *grpcServer) PostProduct(ctx context.Context, r *pb.CreateProductRequest
 		Name:        p.Name,
 		Description: p.Description,
 		Price:       p.Price,
+		AccountId:   int64(p.AccountID),
 	}}, nil
 }
 
@@ -98,6 +101,7 @@ func (s *grpcServer) UpdateProduct(ctx context.Context, r *pb.UpdateProductReque
 		Name:        p.Name,
 		Description: p.Description,
 		Price:       p.Price,
+		AccountId:   int64(p.AccountID),
 	}}, nil
 }
 

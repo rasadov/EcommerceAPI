@@ -12,7 +12,7 @@ import (
 	"github.com/rasadov/EcommerceAPI/account/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -68,18 +68,6 @@ func createSampleAccount() models.Account {
 		Name:     "Test User",
 		Password: "hashedpassword123",
 	}
-}
-
-func TestNewPostgresRepository(t *testing.T) {
-	// TODO: Implement integration testing with postgresql container
-	t.Skip("Skipping integration test - requires PostgreSQL database")
-
-	// Example of how you might test with a real database:
-	// databaseURL := "postgres://user:password@localhost/testdb?sslmode=disable"
-	// repo, err := NewPostgresRepository(databaseURL)
-	// assert.NoError(t, err)
-	// assert.NotNil(t, repo)
-	// defer repo.Close()
 }
 
 func TestRepository_PutAccount(t *testing.T) {
@@ -335,21 +323,6 @@ func BenchmarkPostgresRepository_GetAccountByEmail(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
-}
-
-// Integration test example (requires actual PostgreSQL)
-func TestRepositoryIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
-
-	// This would use a real PostgreSQL database or testcontainers
-	// databaseURL := os.Getenv("TEST_DATABASE_URL")
-	// if databaseURL == "" {
-	//     t.Skip("TEST_DATABASE_URL not set")
-	// }
-
-	t.Skip("Integration test - implement with testcontainers or test database")
 }
 
 // Helper function for testing with timeout

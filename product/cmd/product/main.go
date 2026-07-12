@@ -14,16 +14,18 @@ import (
 func main() {
 	var repository internal.Repository
 
+	var producer sarama.AsyncProducer
 	producer, err := sarama.NewAsyncProducer([]string{config.BootstrapServers}, nil)
 	if err != nil {
-		log.Println(err)
+		log.Println("Kafka producer unavailable:", err)
+		producer = nil
+	} else {
+		defer func() {
+			if err := producer.Close(); err != nil {
+				log.Println(err)
+			}
+		}()
 	}
-	defer func(producer sarama.AsyncProducer) {
-		err := producer.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}(producer)
 
 	retry.ForeverSleep(2*time.Second, func(_ int) (err error) {
 		repository, err = internal.NewElasticRepository(config.DatabaseURL)

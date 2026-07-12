@@ -2,14 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"log"
 	"math/rand"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-// 1) Register a new account
-func Test01Register(t *testing.T) {
+func stepRegister(t *testing.T) {
 	query := `
         mutation Register($account: RegisterInput!) {
           register(account: $account) {
@@ -27,7 +27,7 @@ func Test01Register(t *testing.T) {
 		},
 	}
 
-	resp := doRequest(t, serverURL, query, variables)
+	resp := doRequest(t, query, variables)
 	assert.Nil(t, resp.Errors, "unexpected GraphQL errors during Register")
 
 	data, ok := resp.Data.(map[string]interface{})
@@ -40,11 +40,11 @@ func Test01Register(t *testing.T) {
 	assert.True(t, ok, "token should be a string")
 	assert.NotEmpty(t, token, "expected a token in register response")
 
-	AuthToken = token // store the token globally for subsequent tests
+	AuthToken = token
+	setAccountIDFromToken(t)
 }
 
-// 2) Login with the registered account
-func Test02Login(t *testing.T) {
+func stepLogin(t *testing.T) {
 	query := `
         mutation Login($account: LoginInput!) {
           login(account: $account) {
@@ -59,7 +59,7 @@ func Test02Login(t *testing.T) {
 		},
 	}
 
-	resp := doRequest(t, serverURL, query, variables)
+	resp := doRequest(t, query, variables)
 	assert.Nil(t, resp.Errors, "unexpected GraphQL errors during Login")
 
 	data, ok := resp.Data.(map[string]interface{})
@@ -72,20 +72,18 @@ func Test02Login(t *testing.T) {
 	assert.True(t, ok, "token should be a string")
 	assert.NotEmpty(t, token, "expected a token in login response")
 
-	AuthToken = token // refresh the token from login (optional)
-	log.Println("Got token from Login:", AuthToken)
+	AuthToken = token
+	log.Println("Got token from Login")
 }
 
-// 5) QUERY ACCOUNTS
-func Test05QueryAccounts(t *testing.T) {
+func stepQueryAccounts(t *testing.T) {
 	query := `
-        query GetAccounts($pagination: PaginationInput, $id: String) {
-          accounts(pagination: $pagination, $id: String) {
+        query GetAccounts($pagination: PaginationInput, $id: Int) {
+          accounts(pagination: $pagination, id: $id) {
             id
             name
             email
           }
-		  "id": "1",
         }
     `
 	variables := map[string]interface{}{
@@ -95,7 +93,7 @@ func Test05QueryAccounts(t *testing.T) {
 		},
 	}
 
-	resp := doRequest(t, serverURL, query, variables)
+	resp := doRequest(t, query, variables)
 	assert.Nil(t, resp.Errors)
 
 	data, ok := resp.Data.(map[string]interface{})
@@ -103,6 +101,6 @@ func Test05QueryAccounts(t *testing.T) {
 
 	accounts, ok := data["accounts"].([]interface{})
 	assert.True(t, ok)
+	assert.NotEmpty(t, accounts)
 	log.Println("Accounts:", accounts)
-	// Add additional assertions as needed
 }
