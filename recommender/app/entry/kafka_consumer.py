@@ -70,6 +70,5 @@ def _handle_interaction_event(event: dict) -> None:
                 )
                 session.rollback()
 
-
 if __name__ == "__main__":
     start_kafka_consumer()
