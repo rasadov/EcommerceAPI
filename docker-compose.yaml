@@ -221,6 +221,7 @@ services:
       ORDER_SERVICE_URL: order:8080
       PAYMENT_SERVICE_URL: payment:8080
       RECOMMENDER_SERVICE_URL: recommender:8080
+      ENVIRONMENT: development
     restart: on-failure
 
 volumes:
