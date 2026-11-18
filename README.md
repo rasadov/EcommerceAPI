@@ -135,6 +135,19 @@ Once everything is running, open your browser to:
 - **GraphQL Playground (interactive testing)**:  
   [http://localhost:8080/playground](http://localhost:8080/playground)
 
+#### 🔧 GraphQL Introspection Configuration
+
+GraphQL introspection allows interactive clients like GraphQL Playground and GraphiQL to query schema metadata and display the "Docs" and "Schema" tabs.
+
+- **Development / Local** (`ENVIRONMENT=development`, default): Introspection is **enabled** by default for easy API testing and schema browsing.
+- **Production** (`ENVIRONMENT=production`): Introspection is **disabled** by default for security.
+- **Explicit Override**: Set `ENABLE_INTROSPECTION=true` or `ENABLE_INTROSPECTION=false` to explicitly override the default behavior in any environment.
+
+| Environment Variable | Description | Default |
+| --- | --- | --- |
+| `ENVIRONMENT` | Target environment (`development`, `production`) | `development` |
+| `ENABLE_INTROSPECTION` | Explicit override for GraphQL schema introspection (`true`/`false`) | `true` in dev, `false` in prod |
+
 ---
 
 ## 📬 Usage (GraphQL)
