@@ -175,18 +175,18 @@ func (d *dodoClient) HandleWebhook(w http.ResponseWriter, r *http.Request) (*mod
 		return nil, errors.New("method not allowed")
 	}
 
-	webhookSignature := r.Header.Get("webhook-signature")
-	if !d.verifyWebhookSignature(webhookSignature, []byte(config.DodoWebhookSecret)) {
-		http.Error(w, "Invalid Webhook Signature", http.StatusBadRequest)
-		return nil, errors.New("invalid Webhook Signature")
-	}
-
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 		return nil, err
 	}
 	defer r.Body.Close()
+
+	webhookSignature := r.Header.Get("webhook-signature")
+	if !d.verifyWebhookSignature(webhookSignature, body) {
+		http.Error(w, "Invalid Webhook Signature", http.StatusBadRequest)
+		return nil, errors.New("invalid Webhook Signature")
+	}
 
 	// Parse webhook payload
 	var payload dto.WebhookPayload
